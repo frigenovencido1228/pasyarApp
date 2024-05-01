@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "635721561356",
+    "project_id": "pasyarapp",
+    "storage_bucket": "pasyarapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:635721561356:android:75c30fe041a903a9eac529",
+        "android_client_info": {
+          "package_name": "com.example.pasyarapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ5MI-267ks9LQeeJQHqtAPputEk6y_jw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

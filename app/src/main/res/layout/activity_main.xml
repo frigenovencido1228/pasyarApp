@@ -33,7 +33,9 @@
     <Spinner
         android:id="@+id/categorySpinner"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        tools:listitem="@layout/layout_category" />
 
     <Button
         android:id="@+id/btnAddPlace"
@@ -41,4 +43,8 @@
         android:layout_height="wrap_content"
         android:text="add place" />
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvPlaces"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 </LinearLayout>

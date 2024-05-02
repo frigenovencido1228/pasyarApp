@@ -1,31 +1,28 @@
 package com.example.pasyarapp
 
-import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
-import android.util.Log
-import android.view.Gravity
 import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.Toast
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.pasyarapp.classes.Category
-import com.google.android.gms.tasks.OnFailureListener
-import com.google.android.gms.tasks.OnSuccessListener
+import com.example.pasyarapp.classes.Place
+import com.example.pasyarapp.classes.PlacesAdapter
+import com.example.pasyarapp.classes.SpinnerAdapter
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -40,12 +37,15 @@ import java.io.File
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
     lateinit var database: FirebaseDatabase
+    lateinit var rvPlaces: RecyclerView
     var imageUri: Uri? = null
     lateinit var dbCategory: DatabaseReference
+    lateinit var dbPlaces: DatabaseReference
     lateinit var etCategory: EditText
     lateinit var btnAddCategory: Button
     lateinit var categorySpinner: Spinner
-    lateinit var categoryList: ArrayList<String>
+    lateinit var categoryList: ArrayList<Category>
+    lateinit var placesList: ArrayList<Place>
     lateinit var btnAddPlace: Button
     lateinit var btnAddIcon: Button
     lateinit var ivIcon: ImageView
@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         database = Firebase.database
         dbCategory = database.getReference("category")
+        dbPlaces = database.getReference("places")
+
         storageRef = Firebase.storage.reference
 
         etCategory = findViewById(R.id.etCategory)
@@ -64,12 +66,14 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         btnAddPlace = findViewById(R.id.btnAddPlace)
         ivIcon = findViewById(R.id.ivIcon)
         btnAddIcon = findViewById(R.id.btnAddIcon)
-
+        rvPlaces = findViewById(R.id.rvPlaces)
         categorySpinner = findViewById(R.id.categorySpinner)
 
         categoryList = arrayListOf()
+        placesList = arrayListOf()
 
         fetchCategories()
+        fetchPlaces()
 
         btnAddIcon.setOnClickListener(View.OnClickListener {
             val galleryIntent = Intent(Intent.ACTION_PICK)
@@ -83,9 +87,36 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         })
 
         btnAddPlace.setOnClickListener(View.OnClickListener {
-            val name = categorySpinner.selectedItem
+            val category: Category = categorySpinner.selectedItem as Category
 
-            Toast.makeText(applicationContext, "Selected $name", Toast.LENGTH_SHORT).show()
+            val time = System.currentTimeMillis().toString()
+
+            val place = Place(time, "loc", "desc", "name", category)
+
+            dbPlaces.child(time).setValue(place)
+            Toast.makeText(applicationContext, "$category", Toast.LENGTH_SHORT).show()
+
+        })
+    }
+
+    private fun fetchPlaces() {
+        placesList.clear()
+
+        dbPlaces.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (snap in snapshot.children) {
+                    val place = snap.getValue(Place::class.java)
+                    placesList.add(place!!)
+                }
+
+                rvPlaces.adapter = PlacesAdapter(placesList)
+                rvPlaces.layoutManager = LinearLayoutManager(this@MainActivity)
+                rvPlaces.setHasFixedSize(true)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
 
         })
     }
@@ -108,24 +139,45 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
                 for (dataSnap in snapshot.children) {
                     val category = dataSnap.getValue(Category::class.java)
-                    val name = category?.name
-                    categoryList.add(name!!)
+                    categoryList.add(category!!)
                 }
 
-                var arrayAdapter =
-                    ArrayAdapter(
-                        applicationContext,
-                        android.R.layout.simple_list_item_1,
-                        categoryList
-                    )
+                val adapter = SpinnerAdapter(applicationContext, categoryList)
+                categorySpinner.adapter = adapter
+//                categorySpinner.adapter = ArrayAdapter(
+//                    this@MainActivity, R.layout.layout_category,
+//                    R.id.tvName, categoryList
+//                )
 
-                with(categorySpinner) {
-                    adapter = arrayAdapter
-                    setSelection(0, false)
-                    onItemSelectedListener = this@MainActivity
-                    prompt = "Select category"
-                    gravity = Gravity.CENTER
-                }
+//                categorySpinner.onItemSelectedListener = object : OnItemSelectedListener {
+//                    override fun onItemSelected(
+//                        parent: AdapterView<*>?,
+//                        view: View?,
+//                        position: Int,
+//                        id: Long
+//                    ) {
+//                        TODO("Not yet implemented")
+//                    }
+//
+//                    override fun onNothingSelected(parent: AdapterView<*>?) {
+//                        TODO("Not yet implemented")
+//                    }
+//
+//                }
+//                var arrayAdapter =
+//                    ArrayAdapter(
+//                        applicationContext,
+//                        android.R.layout.simple_list_item_1,
+//                        categoryList
+//                    )
+//
+//                with(categorySpinner) {
+//                    adapter = arrayAdapter
+//                    setSelection(0, false)
+//                    onItemSelectedListener = this@MainActivity
+//                    prompt = "Select category"
+//                    gravity = Gravity.CENTER
+//                }
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -160,7 +212,11 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 dbCategory.child(key).setValue(category).addOnCompleteListener {
                     Toast.makeText(applicationContext, "Added Category.", Toast.LENGTH_SHORT).show()
                 }.addOnFailureListener {
-                    Toast.makeText(applicationContext, "Error: ${it.message.toString()}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        applicationContext,
+                        "Error: ${it.message.toString()}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -197,7 +253,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 //    }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-//        Toast.makeText(applicationContext, "${categoryList[position]}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(applicationContext, "${categoryList[position]}", Toast.LENGTH_SHORT).show()
 
     }
 

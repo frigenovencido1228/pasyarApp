@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
+                Toast.makeText(applicationContext, "${error.message}", Toast.LENGTH_SHORT).show()
             }
 
         })
@@ -144,44 +144,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
                 val adapter = SpinnerAdapter(applicationContext, categoryList)
                 categorySpinner.adapter = adapter
-//                categorySpinner.adapter = ArrayAdapter(
-//                    this@MainActivity, R.layout.layout_category,
-//                    R.id.tvName, categoryList
-//                )
-
-//                categorySpinner.onItemSelectedListener = object : OnItemSelectedListener {
-//                    override fun onItemSelected(
-//                        parent: AdapterView<*>?,
-//                        view: View?,
-//                        position: Int,
-//                        id: Long
-//                    ) {
-//                        TODO("Not yet implemented")
-//                    }
-//
-//                    override fun onNothingSelected(parent: AdapterView<*>?) {
-//                        TODO("Not yet implemented")
-//                    }
-//
-//                }
-//                var arrayAdapter =
-//                    ArrayAdapter(
-//                        applicationContext,
-//                        android.R.layout.simple_list_item_1,
-//                        categoryList
-//                    )
-//
-//                with(categorySpinner) {
-//                    adapter = arrayAdapter
-//                    setSelection(0, false)
-//                    onItemSelectedListener = this@MainActivity
-//                    prompt = "Select category"
-//                    gravity = Gravity.CENTER
-//                }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
+                Toast.makeText(applicationContext, "${error.message}", Toast.LENGTH_SHORT).show()
             }
 
         })
@@ -236,21 +202,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         return extension
     }
-
-//    @SuppressLint("Range")
-//    private fun getFileName(context: Context, uri: Uri): String? {
-//        if (uri.scheme == "content") {
-//            val cursor = context.contentResolver.query(uri, null, null, null, null)
-//            cursor.use {
-//                if (cursor != null) {
-//                    if (cursor.moveToFirst()) {
-//                        return cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
-//                    }
-//                }
-//            }
-//        }
-//        return uri.path?.lastIndexOf('/')?.let { uri.path?.substring(it) }
-//    }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         Toast.makeText(applicationContext, "${categoryList[position]}", Toast.LENGTH_SHORT).show()

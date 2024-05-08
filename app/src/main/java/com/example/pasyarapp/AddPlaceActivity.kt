@@ -1,21 +1,29 @@
 package com.example.pasyarapp
 
+import android.app.Dialog
 import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.webkit.MimeTypeMap
+import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.pasyarapp.classes.Category
 import com.example.pasyarapp.classes.CategoryAdapter
+import com.example.pasyarapp.classes.Commons
 import com.example.pasyarapp.classes.OnItemClick
 import com.example.pasyarapp.classes.Place
 import com.example.pasyarapp.classes.SpinnerAdapter
+import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.database.DataSnapshot
@@ -25,7 +33,11 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.storage
 import java.io.File
+import java.util.Timer
+import kotlin.concurrent.schedule
 
 class AddPlaceActivity : AppCompatActivity(), OnItemClick {
 
@@ -34,7 +46,9 @@ class AddPlaceActivity : AppCompatActivity(), OnItemClick {
     lateinit var dbCategory: DatabaseReference
     lateinit var dbPlace: DatabaseReference
     lateinit var rvCategory: RecyclerView
-
+    lateinit var loadingDialog: Dialog
+    lateinit var ivImageView: ImageView
+    lateinit var ivBack: ImageView
     lateinit var etName: TextInputEditText
     lateinit var etLocation: TextInputEditText
     lateinit var etDescription: TextInputEditText
@@ -42,8 +56,12 @@ class AddPlaceActivity : AppCompatActivity(), OnItemClick {
 
     lateinit var btnPositive: MaterialButton
     lateinit var btnNegative: MaterialButton
+    lateinit var btnChoose: MaterialButton
+    lateinit var storageRef: StorageReference
 
     lateinit var currentCategory: Category
+
+    var imageUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,8 +72,15 @@ class AddPlaceActivity : AppCompatActivity(), OnItemClick {
         dbCategory = firebaseDatabase.getReference("category")
         dbPlace = firebaseDatabase.getReference("places")
 
+        storageRef = Firebase.storage.reference
+
+        loadingDialog = Commons.loadingDialog(this)
+
+        ivImageView = findViewById(R.id.ivImage)
+        ivBack = findViewById(R.id.ivBack)
         btnNegative = findViewById(R.id.btnNegative)
         btnPositive = findViewById(R.id.btnPositive)
+        btnChoose = findViewById(R.id.btnChoose)
 
         etName = findViewById(R.id.etName)
         etLocation = findViewById(R.id.etLocation)
@@ -71,10 +96,36 @@ class AddPlaceActivity : AppCompatActivity(), OnItemClick {
         btnPositive.setOnClickListener(View.OnClickListener {
             addPlace()
         })
+
+        btnChoose.setOnClickListener(View.OnClickListener {
+            choosePhoto()
+        })
+
+        ivBack.setOnClickListener(View.OnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        })
         categoryList = arrayListOf()
 
         fetchCategories()
     }
+
+    private fun choosePhoto() {
+        val galleryIntent = Intent(Intent.ACTION_PICK)
+        galleryIntent.type = "image/*"
+
+        imagePickerActivityResult.launch(galleryIntent)
+    }
+
+    private var imagePickerActivityResult: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result != null) {
+                // getting URI of selected Image
+                imageUri = result.data?.data
+
+                Glide.with(applicationContext).load(imageUri).into(ivImageView)
+            }
+        }
 
     private fun addPlace() {
         val name = etName.text.toString()
@@ -82,21 +133,50 @@ class AddPlaceActivity : AppCompatActivity(), OnItemClick {
         val category = etCategory.text.toString()
         val description = etDescription.text.toString()
 
+        if (imageUri == null) {
+            Toast.makeText(applicationContext, "Choose image.", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (name.isEmpty() && location.isEmpty() && category.isEmpty() && description.isEmpty()) {
             Toast.makeText(applicationContext, "Enter all fields", Toast.LENGTH_SHORT).show()
             return
         }
+
+        loadingDialog.show()
         val key = dbPlace.push().key
 
-        val place = Place(key, location, description, name, currentCategory)
-        dbPlace.child(key.toString()).setValue(place).addOnCompleteListener {
-            Toast.makeText(applicationContext, "OK", Toast.LENGTH_SHORT).show()
+        val time = System.currentTimeMillis().toString()
+        val fileExtension = getFileExtension(applicationContext, imageUri!!)
 
-        }.addOnFailureListener {
-            Toast.makeText(applicationContext, "${it.message.toString()}", Toast.LENGTH_SHORT)
-                .show()
+        val fileName = "$time.$fileExtension"
 
-        }
+        val uploadTask = storageRef.child("file/$fileName").putFile(imageUri!!)
+
+        uploadTask.addOnCompleteListener(OnCompleteListener {
+            storageRef.child("upload/$fileName").downloadUrl.addOnCompleteListener(
+                OnCompleteListener {
+                    val place = Place(key, location, description, name, currentCategory, fileName)
+                    dbPlace.child(key.toString()).setValue(place).addOnCompleteListener {
+                        Timer().schedule(2000) {
+                        }
+                        loadingDialog.dismiss()
+
+                        Toast.makeText(applicationContext, "OK", Toast.LENGTH_SHORT).show()
+
+
+                    }.addOnFailureListener {
+                        Toast.makeText(
+                            applicationContext,
+                            "${it.message.toString()}",
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+
+                    }
+                })
+        })
+
+
     }
 
     private fun fetchCategories() {

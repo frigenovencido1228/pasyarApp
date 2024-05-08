@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                     placesList.add(place!!)
                 }
 
-                rvPlaces.adapter = PlacesAdapter(placesList)
+                rvPlaces.adapter = PlacesAdapter(placesList,applicationContext)
                 rvPlaces.layoutManager = LinearLayoutManager(this@MainActivity)
                 rvPlaces.setHasFixedSize(true)
             }

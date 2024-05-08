@@ -5,5 +5,6 @@ data class Place(
     val location: String = "",
     val description: String = "",
     val name: String? = "",
-    val category: Category? = Category("","","")
+    val category: Category? = Category("", "", ""),
+    val imageUrl: String = ""
 )
